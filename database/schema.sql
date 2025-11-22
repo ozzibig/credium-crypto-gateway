@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS users (
     telegram_id BIGINT UNIQUE,
     telegram_username VARCHAR(255),
     referral_code VARCHAR(50) UNIQUE,
-    referred_by INTEGER REFERENCES users(id),
+    referred_by TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -65,8 +65,8 @@ CREATE TABLE IF NOT EXISTS sweeps (
 -- Referrals table
 CREATE TABLE IF NOT EXISTS referrals (
     id SERIAL PRIMARY KEY,
-    referrer_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-    referred_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    referrer_id TEXT REFERENCES users(id) ON DELETE CASCADE,
+    referred_id TEXT REFERENCES users(id) ON DELETE CASCADE,
     karat_earned DECIMAL(20,2) DEFAULT 0,
     usdt_value DECIMAL(20,2) DEFAULT 0,
     status VARCHAR(50) DEFAULT 'active',
@@ -77,7 +77,7 @@ CREATE TABLE IF NOT EXISTS referrals (
 -- Karat transactions table
 CREATE TABLE IF NOT EXISTS karat_transactions (
     id SERIAL PRIMARY KEY,
-    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    user_id TEXT REFERENCES users(id) ON DELETE CASCADE,
     type VARCHAR(50) NOT NULL,
     amount DECIMAL(20,2) NOT NULL,
     usdt_value DECIMAL(20,2) NOT NULL,
@@ -88,7 +88,7 @@ CREATE TABLE IF NOT EXISTS karat_transactions (
 -- Cards table
 CREATE TABLE IF NOT EXISTS cards (
     id SERIAL PRIMARY KEY,
-    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    user_id TEXT REFERENCES users(id) ON DELETE CASCADE,
     card_type VARCHAR(50) NOT NULL,
     status VARCHAR(50) DEFAULT 'pending',
     created_at TIMESTAMP DEFAULT NOW()
@@ -107,3 +107,7 @@ CREATE INDEX IF NOT EXISTS idx_referrals_referrer_id ON referrals(referrer_id);
 CREATE INDEX IF NOT EXISTS idx_referrals_referred_id ON referrals(referred_id);
 CREATE INDEX IF NOT EXISTS idx_karat_transactions_user_id ON karat_transactions(user_id);
 CREATE INDEX IF NOT EXISTS idx_cards_user_id ON cards(user_id);
+
+-- Add self-referencing foreign key constraint for users.referred_by
+ALTER TABLE users ADD CONSTRAINT users_referred_by_fkey
+    FOREIGN KEY (referred_by) REFERENCES users(id) ON DELETE SET NULL;
