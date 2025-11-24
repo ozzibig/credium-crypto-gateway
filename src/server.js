@@ -47,6 +47,10 @@ const walletGenerationLimiter = rateLimit({
 // Apply general rate limiter to all routes
 app.use(generalLimiter);
 
+// Webhook routes (public, no auth needed)
+const webhookRoutes = require('./routes/webhook');
+app.use('/webhook', webhookRoutes);
+
 // Public routes (no auth)
 app.get('/health', async (req, res) => {
   try {
@@ -112,6 +116,7 @@ async function startServer() {
       logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       logger.info(`📡 API: http://localhost:${PORT}`);
       logger.info(`💚 Health: http://localhost:${PORT}/health`);
+      logger.info(`🤖 Telegram Webhook: http://localhost:${PORT}/webhook/telegram`);
       logger.info(`🔐 Auth: http://localhost:${PORT}/api/auth/me`);
       logger.info(`💰 Wallets: http://localhost:${PORT}/api/wallets`);
       logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
