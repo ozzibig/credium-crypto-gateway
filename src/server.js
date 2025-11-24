@@ -54,21 +54,30 @@ app.use('/webhook', webhookRoutes);
 // Public routes (no auth)
 app.get('/health', async (req, res) => {
   try {
-    const dbConnected = await testConnection();
-    
-    const depositMonitorRunning = typeof depositMonitor.isRunning === 'function' 
-      ? depositMonitor.isRunning() 
+    // Test connessione database senza crashare
+    let dbConnected = false;
+    try {
+      const result = await pool.query('SELECT 1');
+      dbConnected = result ? true : false;
+    } catch (dbError) {
+      dbConnected = false;
+    }
+
+    const depositMonitorRunning = typeof depositMonitor.isRunning === 'function'
+      ? depositMonitor.isRunning()
       : false;
     const sweepEngineRunning = typeof sweepEngine.isRunning === 'function'
       ? sweepEngine.isRunning()
       : false;
-    
+
     res.json({
       status: 'ok',
+      mode: dbConnected ? 'full' : 'limited (chatbot only)',
       timestamp: new Date().toISOString(),
       services: {
         api: 'running',
         database: dbConnected ? 'connected' : 'disconnected',
+        telegramChatbot: 'active',
         depositMonitor: depositMonitorRunning ? 'running' : 'stopped',
         sweepEngine: sweepEngineRunning ? 'running' : 'stopped'
       },
@@ -79,9 +88,9 @@ app.get('/health', async (req, res) => {
       }
     });
   } catch (error) {
-    res.status(500).json({ 
-      status: 'error', 
-      message: error.message 
+    res.status(500).json({
+      status: 'error',
+      message: error.message
     });
   }
 });
@@ -102,13 +111,19 @@ const PORT = process.env.PORT || 3000;
 
 async function startServer() {
   try {
+    // Tenta connessione database con retry
     const dbConnected = await testConnection();
+
     if (!dbConnected) {
-      logger.error('❌ Database connection failed, exiting...');
-      process.exit(1);
+      logger.warn('⚠️ Database connection failed');
+      logger.warn('⚠️ Server starting in LIMITED MODE (chatbot only)');
+      logger.warn('⚠️ Wallet and payment features will not work');
+      logger.warn('⚠️ Please configure DATABASE_URL environment variable');
+      // NON uscire - continua senza database
+    } else {
+      // Database connesso - esegui setup
+      await autoSetupDatabase();
     }
-    
-    await autoSetupDatabase();
     
     app.listen(PORT, '0.0.0.0', () => {
       logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
@@ -120,18 +135,24 @@ async function startServer() {
       logger.info(`🔐 Auth: http://localhost:${PORT}/api/auth/me`);
       logger.info(`💰 Wallets: http://localhost:${PORT}/api/wallets`);
       logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      
-      setTimeout(() => {
-        logger.info('🚀 Starting deposit monitor...');
-        depositMonitor.start();
-        logger.info('✅ Deposit monitor initialization complete');
-      }, 3000);
-      
-      if (process.env.AUTO_SWEEP_ENABLED === 'true') {
+
+      // Avvia servizi solo se il database è connesso
+      if (dbConnected) {
         setTimeout(() => {
-          logger.info('💸 Starting sweep engine...');
-          sweepEngine.start();
-        }, 4000);
+          logger.info('🚀 Starting deposit monitor...');
+          depositMonitor.start();
+          logger.info('✅ Deposit monitor initialization complete');
+        }, 3000);
+
+        if (process.env.AUTO_SWEEP_ENABLED === 'true') {
+          setTimeout(() => {
+            logger.info('💸 Starting sweep engine...');
+            sweepEngine.start();
+          }, 4000);
+        }
+      } else {
+        logger.info('⚠️ Deposit monitor and sweep engine DISABLED (no database)');
+        logger.info('✅ Telegram chatbot is ACTIVE and working');
       }
     });
   } catch (error) {
