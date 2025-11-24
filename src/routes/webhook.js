@@ -30,7 +30,7 @@ router.post('/telegram', async (req, res) => {
     const userMessage = update.message.text;
 
     // Log del messaggio ricevuto
-    logger.info(`=é Messaggio da ${firstName} (${userId}): ${userMessage}`);
+    logger.info(`=ï¿½ Messaggio da ${firstName} (${userId}): ${userMessage}`);
 
     // Costruisci il contesto utente per il chatbot
     const userContext = {
@@ -38,6 +38,12 @@ router.post('/telegram', async (req, res) => {
       username,
       userId
     };
+
+    // Mostra "typing..." mentre generiamo la risposta
+    await axios.post(`${TELEGRAM_API_URL}/sendChatAction`, {
+      chat_id: chatId,
+      action: 'typing'
+    });
 
     // Genera risposta intelligente con Claude AI
     const botResponse = await generateResponse(userMessage, userContext);
