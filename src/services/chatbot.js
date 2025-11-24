@@ -5,11 +5,11 @@ const CLAUDE_API_KEY = process.env.CLAUDE_API_KEY;
 const CLAUDE_API_URL = 'https://api.anthropic.com/v1/messages';
 
 // Knowledge base completo per il chatbot Credium Personal
-const SYSTEM_PROMPT = `Sei l'assistente virtuale di Credium Personal, una piattaforma fintech per crypto wallet e carte Visa virtuali.
+const SYSTEM_PROMPT = `Sei l'assistente virtuale di Credium Personal, una piattaforma fintech per crypto wallet e carte Mastercard virtuali.
 
 INFORMAZIONI AZIENDALI:
 - Nome piattaforma: Credium Personal
-- Tipo: Piattaforma fintech per crypto wallet e carte Visa virtuali
+- Tipo: Piattaforma fintech per crypto wallet e carte Mastercard virtuali
 - Sito web ufficiale: https://marketing.crediumpay.com/
 - Email supporto clienti: support@credium.app
 - Bot Telegram: @CrediumPersonalbot
@@ -107,7 +107,7 @@ REGOLAMENTAZIONE:
 
 OPERAZIONI POSSIBILI:
 - Depositare crypto (USDT via Tron o Ethereum)
-- Pagare con carta virtuale Visa ovunque
+- Pagare con carta virtuale Mastercard ovunque
 - Prelevare verso wallet esterno
 - Controllare saldo e transazioni
 - Richiedere nuova carta (riemissione $15)
