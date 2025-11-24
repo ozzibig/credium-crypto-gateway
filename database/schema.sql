@@ -108,6 +108,14 @@ CREATE INDEX IF NOT EXISTS idx_referrals_referred_id ON referrals(referred_id);
 CREATE INDEX IF NOT EXISTS idx_karat_transactions_user_id ON karat_transactions(user_id);
 CREATE INDEX IF NOT EXISTS idx_cards_user_id ON cards(user_id);
 
--- Add self-referencing foreign key constraint for users.referred_by
-ALTER TABLE users ADD CONSTRAINT users_referred_by_fkey
-    FOREIGN KEY (referred_by) REFERENCES users(id) ON DELETE SET NULL;
+-- Add self-referencing foreign key constraint for users.referred_by (idempotent)
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conname = 'users_referred_by_fkey'
+    ) THEN
+        ALTER TABLE users ADD CONSTRAINT users_referred_by_fkey
+            FOREIGN KEY (referred_by) REFERENCES users(id) ON DELETE SET NULL;
+    END IF;
+END $$;
