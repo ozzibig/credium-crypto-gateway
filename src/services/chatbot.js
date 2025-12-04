@@ -4,6 +4,23 @@ require('dotenv').config();
 const CLAUDE_API_KEY = process.env.CLAUDE_API_KEY;
 const CLAUDE_API_URL = 'https://api.anthropic.com/v1/messages';
 
+// Storage in memoria per la cronologia conversazioni (per utente)
+// Formato: { odologia: [{ role: 'user'|'assistant', content: string }] }
+const conversationHistory = new Map();
+
+// Configurazione cronologia
+const MAX_HISTORY_LENGTH = 10; // Ultimi 10 messaggi (5 scambi user/assistant)
+const HISTORY_EXPIRY_MS = 30 * 60 * 1000; // 30 minuti di inattività
+
+// Pulizia periodica delle conversazioni scadute
+setInterval(() => {
+  const now = Date.now();
+  for (const [odologia, data] of conversationHistory.entries()) {
+    if (now - data.lastActivity > HISTORY_EXPIRY_MS) {
+      conversationHistory.delete(odologia)}
+  }
+}, 5 * 60 * 1000); // Controlla ogni 5 minuti
+
 // Knowledge base per il chatbot Telecard
 const SYSTEM_PROMPT = `Sei l'assistente virtuale di Telecard, carta Mastercard virtuale collegata a wallet crypto.
 
@@ -99,12 +116,56 @@ REGOLE ASSOLUTE:
 2. Risposte corte, max 2-3 righe
 3. Info aggiuntive solo se richieste
 4. Lingua: SEMPRE italiano
-5. Emoji: massimo 1 per messaggio, solo se appropriato`;
+5. Emoji: massimo 1 per messaggio, solo se appropriato
+6. IMPORTANTE: Quando l'utente risponde "sì", "ok", "dimmi", "vai", continua il discorso precedente`;
 
 /**
- * Genera una risposta intelligente usando Claude AI
+ * Ottiene la cronologia conversazione per un utente
+ * @param {string} odologia - ID utente
+ * @returns {Array} - Array di messaggi
+ */
+function getConversationHistory(odologia) {
+  const data = conversationHistory.get(odologia);
+  if (!data) return [];
+  return data.messages;
+}
+
+/**
+ * Aggiunge un messaggio alla cronologia
+ * @param {string} odologia - ID utente
+ * @param {string} role - 'user' o 'assistant'
+ * @param {string} content - Contenuto del messaggio
+ */
+function addToHistory(odologia, role, content) {
+  if (!conversationHistory.has(odologia)) {
+    conversationHistory.set(odologia, {
+      messages: [],
+      lastActivity: Date.now()
+    });
+  }
+
+  const data = conversationHistory.get(odologia);
+  data.messages.push({ role, content });
+  data.lastActivity = Date.now();
+
+  // Mantieni solo gli ultimi N messaggi
+  if (data.messages.length > MAX_HISTORY_LENGTH) {
+    data.messages = data.messages.slice(-MAX_HISTORY_LENGTH);
+  }
+}
+
+/**
+ * Resetta la cronologia per un utente
+ * @param {string} odologia - ID utente
+ */
+function clearHistory(odologia) {
+  conversationHistory.delete(odologia);
+}
+
+/**
+ * Genera una risposta intelligente usando Claude AI con cronologia
  * @param {string} userMessage - Il messaggio dell'utente
- * @param {object} userContext - Contesto utente (nome, username, ecc.)
+ * @param {object} userContext - Contesto utente (nome, username, odologia)
  * @returns {Promise<string>} - La risposta generata da Claude
  */
 async function generateResponse(userMessage, userContext = {}) {
@@ -114,10 +175,25 @@ async function generateResponse(userMessage, userContext = {}) {
       return 'Mi dispiace, al momento non riesco a rispondere. Contatta support@telecard.app per assistenza.';
     }
 
-    // Costruisci il contesto utente per personalizzare la risposta
-    const contextInfo = userContext.firstName
-      ? `L'utente si chiama ${userContext.firstName}.`
-      : '';
+    const odologia = userContext.odologia || userContext.userId || 'unknown';
+
+    // Aggiungi il messaggio utente alla cronologia
+    addToHistory(odologia, 'user', userMessage);
+
+    // Recupera la cronologia completa
+    const history = getConversationHistory(odologia);
+
+    // Costruisci i messaggi per Claude
+    // Il primo messaggio include il contesto utente se disponibile
+    const messages = history.map((msg, index) => {
+      if (index === 0 && msg.role === 'user' && userContext.firstName) {
+        return {
+          role: msg.role,
+          content: `[L'utente si chiama ${userContext.firstName}]\n\n${msg.content}`
+        };
+      }
+      return msg;
+    });
 
     const response = await axios.post(
       CLAUDE_API_URL,
@@ -125,12 +201,7 @@ async function generateResponse(userMessage, userContext = {}) {
         model: 'claude-sonnet-4-20250514',
         max_tokens: 256,
         system: SYSTEM_PROMPT,
-        messages: [
-          {
-            role: 'user',
-            content: `${contextInfo}\n\nUtente: ${userMessage}`
-          }
-        ]
+        messages: messages
       },
       {
         headers: {
@@ -138,18 +209,21 @@ async function generateResponse(userMessage, userContext = {}) {
           'anthropic-version': '2023-06-01',
           'content-type': 'application/json'
         },
-        timeout: 30000 // 30 secondi timeout
+        timeout: 30000
       }
     );
 
     // Estrai il testo della risposta
     const assistantMessage = response.data.content[0].text;
+
+    // Aggiungi la risposta dell'assistente alla cronologia
+    addToHistory(odologia, 'assistant', assistantMessage);
+
     return assistantMessage;
 
   } catch (error) {
     console.error('❌ Errore nella chiamata a Claude API:', error.response?.data || error.message);
 
-    // Risposta di fallback
     if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
       return 'Mi dispiace, riprova tra poco o contatta support@telecard.app';
     }
@@ -159,5 +233,7 @@ async function generateResponse(userMessage, userContext = {}) {
 }
 
 module.exports = {
-  generateResponse
+  generateResponse,
+  clearHistory,
+  getConversationHistory
 };
