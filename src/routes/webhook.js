@@ -72,7 +72,7 @@ router.post('/telegram', async (req, res) => {
       try {
         await axios.post(`${TELEGRAM_API_URL}/sendMessage`, {
           chat_id: req.body.message.chat.id,
-          text: 'Mi dispiace, sto avendo problemi tecnici. Riprova tra poco o contatta support@credium.app per assistenza.',
+          text: 'Mi dispiace, sto avendo problemi tecnici. Riprova tra poco o contatta support@telecard.app per assistenza.',
           parse_mode: 'Markdown'
         });
       } catch (sendError) {

@@ -127,7 +127,7 @@ async function startServer() {
     
     app.listen(PORT, '0.0.0.0', () => {
       logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      logger.info(`✅ Credium Crypto Gateway running on port ${PORT}`);
+      logger.info(`✅ Telecard Crypto Gateway running on port ${PORT}`);
       logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       logger.info(`📡 API: http://localhost:${PORT}`);
       logger.info(`💚 Health: http://localhost:${PORT}/health`);

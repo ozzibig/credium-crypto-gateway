@@ -1,7 +1,7 @@
 {
-  "name": "credium-crypto-gateway",
+  "name": "telecard-crypto-gateway",
   "version": "1.0.0",
-  "description": "Telegram crypto wallet for Credium Personal",
+  "description": "Telegram crypto wallet for Telecard",
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",

@@ -28,7 +28,7 @@ router.post('/auth', async (req, res) => {
     
     if (userResult.rows.length === 0) {
       isNewUser = true;
-      const email = `telegram_${telegramUser.id}@credium.app`;
+      const email = `telegram_${telegramUser.id}@telecard.app`;
       const fullName = `${telegramUser.first_name || ''} ${telegramUser.last_name || ''}`.trim();
       const userReferralCode = generateReferralCode(telegramUser.id);
       
@@ -60,7 +60,7 @@ router.post('/auth', async (req, res) => {
         );
       }
       
-      logger.info(`✅ Created Credium user ${userId} (@${telegramUser.username})`);
+      logger.info(`✅ Created Telecard user ${userId} (@${telegramUser.username})`);
     } else {
       userId = userResult.rows[0].id;
     }
