@@ -49,7 +49,9 @@ app.use(generalLimiter);
 
 // Webhook routes (public, no auth needed)
 const webhookRoutes = require('./routes/webhook');
+const martuscielloWebhookRoutes = require('./routes/martuscielloWebhook');
 app.use('/webhook', webhookRoutes);
+app.use('/webhook', martuscielloWebhookRoutes);
 
 // Public routes (no auth)
 app.get('/health', async (req, res) => {
@@ -101,6 +103,7 @@ app.use('/api', authenticateSupabaseToken);
 // Protected routes
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/telegram', require('./routes/telegram'));
+app.use('/api/martusciello', require('./routes/martusciello'));
 
 // Wallets routes with strict rate limiting
 const walletsRouter = require('./routes/wallets');
@@ -134,6 +137,8 @@ async function startServer() {
       logger.info(`🤖 Telegram Webhook: http://localhost:${PORT}/webhook/telegram`);
       logger.info(`🔐 Auth: http://localhost:${PORT}/api/auth/me`);
       logger.info(`💰 Wallets: http://localhost:${PORT}/api/wallets`);
+      logger.info(`💳 Martusciello: http://localhost:${PORT}/api/martusciello`);
+      logger.info(`📡 Martusciello Webhook: http://localhost:${PORT}/webhook/martusciello`);
       logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
       // Avvia servizi solo se il database è connesso
