@@ -1,16 +1,16 @@
 const axios = require('axios');
-const { getAccessToken } = require('./martuscielloAuth');
-const config = require('../config/martusciello');
+const { getAccessToken } = require('./turtleAuth');
+const config = require('../config/turtle');
 const logger = require('../utils/logger');
 
 /**
- * Generic API call to Martusciello
+ * Generic API call to Turtle
  */
 async function callAPI(method, endpoint, body = null) {
   const token = await getAccessToken();
   const url = `${config.API_URL}${endpoint}`;
 
-  logger.info(`📡 Martusciello: ${method.toUpperCase()} ${endpoint}`);
+  logger.info(`📡 Turtle: ${method.toUpperCase()} ${endpoint}`);
 
   try {
     const response = await axios({
@@ -25,19 +25,19 @@ async function callAPI(method, endpoint, body = null) {
 
     return response.data;
   } catch (error) {
-    logger.error(`📡 Martusciello: API call failed - ${method.toUpperCase()} ${endpoint}`);
+    logger.error(`📡 Turtle: API call failed - ${method.toUpperCase()} ${endpoint}`);
     if (error.response) {
-      logger.error(`📡 Martusciello: Error ${error.response.status} - ${JSON.stringify(error.response.data)}`);
-      throw new Error(`Martusciello API error: ${error.response.status} - ${JSON.stringify(error.response.data)}`);
+      logger.error(`📡 Turtle: Error ${error.response.status} - ${JSON.stringify(error.response.data)}`);
+      throw new Error(`Turtle API error: ${error.response.status} - ${JSON.stringify(error.response.data)}`);
     }
-    throw new Error(`Martusciello API error: ${error.message}`);
+    throw new Error(`Turtle API error: ${error.message}`);
   }
 }
 
 // ============ USERS ============
 
 /**
- * Create a new user in Martusciello
+ * Create a new user in Turtle
  * @param {string} externalId - External ID (e.g., telegramId)
  * @param {string} email - User email
  */
@@ -52,7 +52,7 @@ async function createUser(externalId, email) {
 
 /**
  * Submit KYC documents for a user
- * @param {string} userId - Martusciello user ID
+ * @param {string} userId - Turtle user ID
  * @param {object} documents - KYC documents
  */
 async function submitKYC(userId, documents) {
@@ -63,7 +63,7 @@ async function submitKYC(userId, documents) {
 
 /**
  * Get KYC status for a user
- * @param {string} userId - Martusciello user ID
+ * @param {string} userId - Turtle user ID
  */
 async function getKYCStatus(userId) {
   return callAPI('GET', `/api/v1/users/${userId}/kyc`);
@@ -73,7 +73,7 @@ async function getKYCStatus(userId) {
 
 /**
  * Request a new card for a user
- * @param {string} userId - Martusciello user ID
+ * @param {string} userId - Turtle user ID
  * @param {string} cardType - Type of card (virtual/physical)
  */
 async function requestCard(userId, cardType) {
@@ -93,7 +93,7 @@ async function getCard(cardId) {
 
 /**
  * Get all cards for a user
- * @param {string} userId - Martusciello user ID
+ * @param {string} userId - Turtle user ID
  */
 async function getUserCards(userId) {
   return callAPI('GET', `/api/v1/users/${userId}/cards`);

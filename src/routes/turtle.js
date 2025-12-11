@@ -10,13 +10,13 @@ const {
   getUserCards,
   setCardStatus,
   topUpCard,
-} = require('../services/martuscielloClient');
+} = require('../services/turtleClient');
 
 // ============ USERS ============
 
 /**
- * POST /api/martusciello/users
- * Create a new user in Martusciello
+ * POST /api/turtle/users
+ * Create a new user in Turtle
  */
 router.post('/users', async (req, res) => {
   try {
@@ -29,7 +29,7 @@ router.post('/users', async (req, res) => {
       });
     }
 
-    logger.info(`📡 Martusciello: Creating user for telegramId=${telegramId}`);
+    logger.info(`📡 Turtle: Creating user for telegramId=${telegramId}`);
 
     const result = await createUser(telegramId, email);
 
@@ -38,7 +38,7 @@ router.post('/users', async (req, res) => {
       data: result,
     });
   } catch (error) {
-    logger.error(`📡 Martusciello: Create user failed - ${error.message}`);
+    logger.error(`📡 Turtle: Create user failed - ${error.message}`);
     res.status(500).json({
       success: false,
       error: error.message,
@@ -49,7 +49,7 @@ router.post('/users', async (req, res) => {
 // ============ KYC ============
 
 /**
- * POST /api/martusciello/kyc/submit
+ * POST /api/turtle/kyc/submit
  * Submit KYC documents for a user
  */
 router.post('/kyc/submit', async (req, res) => {
@@ -63,7 +63,7 @@ router.post('/kyc/submit', async (req, res) => {
       });
     }
 
-    logger.info(`📡 Martusciello: Submitting KYC for userId=${userId}`);
+    logger.info(`📡 Turtle: Submitting KYC for userId=${userId}`);
 
     const result = await submitKYC(userId, documents);
 
@@ -72,7 +72,7 @@ router.post('/kyc/submit', async (req, res) => {
       data: result,
     });
   } catch (error) {
-    logger.error(`📡 Martusciello: Submit KYC failed - ${error.message}`);
+    logger.error(`📡 Turtle: Submit KYC failed - ${error.message}`);
     res.status(500).json({
       success: false,
       error: error.message,
@@ -81,14 +81,14 @@ router.post('/kyc/submit', async (req, res) => {
 });
 
 /**
- * GET /api/martusciello/kyc/:userId/status
+ * GET /api/turtle/kyc/:userId/status
  * Get KYC status for a user
  */
 router.get('/kyc/:userId/status', async (req, res) => {
   try {
     const { userId } = req.params;
 
-    logger.info(`📡 Martusciello: Getting KYC status for userId=${userId}`);
+    logger.info(`📡 Turtle: Getting KYC status for userId=${userId}`);
 
     const result = await getKYCStatus(userId);
 
@@ -97,7 +97,7 @@ router.get('/kyc/:userId/status', async (req, res) => {
       data: result,
     });
   } catch (error) {
-    logger.error(`📡 Martusciello: Get KYC status failed - ${error.message}`);
+    logger.error(`📡 Turtle: Get KYC status failed - ${error.message}`);
     res.status(500).json({
       success: false,
       error: error.message,
@@ -108,7 +108,7 @@ router.get('/kyc/:userId/status', async (req, res) => {
 // ============ CARDS ============
 
 /**
- * POST /api/martusciello/cards
+ * POST /api/turtle/cards
  * Request a new card for a user
  */
 router.post('/cards', async (req, res) => {
@@ -122,7 +122,7 @@ router.post('/cards', async (req, res) => {
       });
     }
 
-    logger.info(`📡 Martusciello: Requesting card for userId=${userId}, type=${cardType}`);
+    logger.info(`📡 Turtle: Requesting card for userId=${userId}, type=${cardType}`);
 
     const result = await requestCard(userId, cardType);
 
@@ -131,7 +131,7 @@ router.post('/cards', async (req, res) => {
       data: result,
     });
   } catch (error) {
-    logger.error(`📡 Martusciello: Request card failed - ${error.message}`);
+    logger.error(`📡 Turtle: Request card failed - ${error.message}`);
     res.status(500).json({
       success: false,
       error: error.message,
@@ -140,14 +140,14 @@ router.post('/cards', async (req, res) => {
 });
 
 /**
- * GET /api/martusciello/cards/:cardId
+ * GET /api/turtle/cards/:cardId
  * Get card details
  */
 router.get('/cards/:cardId', async (req, res) => {
   try {
     const { cardId } = req.params;
 
-    logger.info(`📡 Martusciello: Getting card cardId=${cardId}`);
+    logger.info(`📡 Turtle: Getting card cardId=${cardId}`);
 
     const result = await getCard(cardId);
 
@@ -156,7 +156,7 @@ router.get('/cards/:cardId', async (req, res) => {
       data: result,
     });
   } catch (error) {
-    logger.error(`📡 Martusciello: Get card failed - ${error.message}`);
+    logger.error(`📡 Turtle: Get card failed - ${error.message}`);
     res.status(500).json({
       success: false,
       error: error.message,
@@ -165,14 +165,14 @@ router.get('/cards/:cardId', async (req, res) => {
 });
 
 /**
- * GET /api/martusciello/users/:userId/cards
+ * GET /api/turtle/users/:userId/cards
  * Get all cards for a user
  */
 router.get('/users/:userId/cards', async (req, res) => {
   try {
     const { userId } = req.params;
 
-    logger.info(`📡 Martusciello: Getting cards for userId=${userId}`);
+    logger.info(`📡 Turtle: Getting cards for userId=${userId}`);
 
     const result = await getUserCards(userId);
 
@@ -181,7 +181,7 @@ router.get('/users/:userId/cards', async (req, res) => {
       data: result,
     });
   } catch (error) {
-    logger.error(`📡 Martusciello: Get user cards failed - ${error.message}`);
+    logger.error(`📡 Turtle: Get user cards failed - ${error.message}`);
     res.status(500).json({
       success: false,
       error: error.message,
@@ -190,7 +190,7 @@ router.get('/users/:userId/cards', async (req, res) => {
 });
 
 /**
- * PATCH /api/martusciello/cards/:cardId/status
+ * PATCH /api/turtle/cards/:cardId/status
  * Set card status
  */
 router.patch('/cards/:cardId/status', async (req, res) => {
@@ -205,7 +205,7 @@ router.patch('/cards/:cardId/status', async (req, res) => {
       });
     }
 
-    logger.info(`📡 Martusciello: Setting card status cardId=${cardId}, status=${status}`);
+    logger.info(`📡 Turtle: Setting card status cardId=${cardId}, status=${status}`);
 
     const result = await setCardStatus(cardId, status);
 
@@ -214,7 +214,7 @@ router.patch('/cards/:cardId/status', async (req, res) => {
       data: result,
     });
   } catch (error) {
-    logger.error(`📡 Martusciello: Set card status failed - ${error.message}`);
+    logger.error(`📡 Turtle: Set card status failed - ${error.message}`);
     res.status(500).json({
       success: false,
       error: error.message,
@@ -223,7 +223,7 @@ router.patch('/cards/:cardId/status', async (req, res) => {
 });
 
 /**
- * POST /api/martusciello/cards/:cardId/topup
+ * POST /api/turtle/cards/:cardId/topup
  * Top up a card
  */
 router.post('/cards/:cardId/topup', async (req, res) => {
@@ -238,7 +238,7 @@ router.post('/cards/:cardId/topup', async (req, res) => {
       });
     }
 
-    logger.info(`📡 Martusciello: Topping up cardId=${cardId}, amount=${amount} ${currency}`);
+    logger.info(`📡 Turtle: Topping up cardId=${cardId}, amount=${amount} ${currency}`);
 
     const result = await topUpCard(cardId, amount, currency);
 
@@ -247,7 +247,7 @@ router.post('/cards/:cardId/topup', async (req, res) => {
       data: result,
     });
   } catch (error) {
-    logger.error(`📡 Martusciello: Top up card failed - ${error.message}`);
+    logger.error(`📡 Turtle: Top up card failed - ${error.message}`);
     res.status(500).json({
       success: false,
       error: error.message,
