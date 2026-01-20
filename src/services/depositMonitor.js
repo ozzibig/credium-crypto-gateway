@@ -2,6 +2,7 @@ const { pool } = require('../database/connection');
 const { getBalance } = require('./blockchainProvider');
 const logger = require('../utils/logger');
 const TOKENS = require('../config/tokens');
+const { notifyDepositReceived } = require('./notificationService');
 
 const MINIMUM_DEPOSIT_USD = parseFloat(process.env.MINIMUM_DEPOSIT_USD || '10');
 const MONITOR_INTERVAL = parseInt(process.env.MONITOR_INTERVAL_SECONDS || '60') * 1000;
@@ -70,15 +71,15 @@ async function recordDeposit(walletId, userId, chain, token, amount, toAddress) 
   try {
     // Check if already recorded
     const existing = await pool.query(
-      `SELECT id FROM deposits 
+      `SELECT id FROM deposits
        WHERE user_id = $1 AND chain = $2 AND token = $3 AND wallet_address = $4 AND status = 'confirmed'`,
       [userId, chain, token, toAddress]
     );
-    
+
     if (existing.rows.length > 0) {
       return; // Already recorded
     }
-    
+
     // Record new deposit
     await pool.query(
       `INSERT INTO deposits (
@@ -86,8 +87,17 @@ async function recordDeposit(walletId, userId, chain, token, amount, toAddress) 
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())`,
       [userId, toAddress, chain, token, amount, amount, 'confirmed']
     );
-    
+
     logger.info(`💰 New deposit detected: ${amount} ${token} on ${chain} for user ${userId}`);
+
+    // Calcola saldo totale e invia notifica Telegram
+    const totalResult = await pool.query(
+      `SELECT COALESCE(SUM(amount), 0) as total FROM deposits
+       WHERE user_id = $1 AND token = $2 AND status = 'confirmed'`,
+      [userId, token]
+    );
+    const totalBalance = parseFloat(totalResult.rows[0]?.total || amount);
+    await notifyDepositReceived(userId, amount, token, totalBalance);
   } catch (error) {
     logger.error('Error recording deposit:', error);
   }

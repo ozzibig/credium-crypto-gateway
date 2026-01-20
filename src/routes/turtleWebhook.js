@@ -4,6 +4,12 @@ const { createRemoteJWKSet, jwtVerify } = require('jose');
 const config = require('../config/turtle');
 const { pool } = require('../database/connection');
 const logger = require('../utils/logger');
+const {
+  notifyKYCApproved,
+  notifyKYCRejected,
+  notifyCardSpend,
+  notifyCardDeclined
+} = require('../services/notificationService');
 
 // Cache JWKS for performance
 let jwks = null;
@@ -143,6 +149,9 @@ async function handleKYCApproved(data) {
     );
 
     logger.info(`📡 Turtle Webhook: KYC status updated to approved`);
+
+    // Invia notifica Telegram
+    await notifyKYCApproved(userId);
   } catch (error) {
     logger.error(`📡 Turtle Webhook: handleKYCApproved error - ${error.message}`);
   }
@@ -163,6 +172,9 @@ async function handleKYCRejected(data) {
     );
 
     logger.info(`📡 Turtle Webhook: KYC status updated to rejected`);
+
+    // Invia notifica Telegram
+    await notifyKYCRejected(userId, reason);
   } catch (error) {
     logger.error(`📡 Turtle Webhook: handleKYCRejected error - ${error.message}`);
   }
@@ -191,7 +203,7 @@ async function handleCardCreated(data) {
 
 async function handleCardTransaction(data) {
   try {
-    const { transactionId, cardId, amount, currency, merchantName, status, createdAt } = data;
+    const { transactionId, cardId, userId, amount, currency, merchantName, status, balance, createdAt } = data;
 
     logger.info(`📡 Turtle Webhook: Card transaction transactionId=${transactionId}, amount=${amount} ${currency}`);
 
@@ -205,6 +217,15 @@ async function handleCardTransaction(data) {
     );
 
     logger.info(`📡 Turtle Webhook: Transaction saved to database`);
+
+    // Invia notifica Telegram in base allo status
+    if (userId) {
+      if (status === 'completed' || status === 'approved') {
+        await notifyCardSpend(userId, amount, currency, merchantName, balance);
+      } else if (status === 'declined' || status === 'insufficient_funds') {
+        await notifyCardDeclined(userId, amount, currency, balance);
+      }
+    }
   } catch (error) {
     logger.error(`📡 Turtle Webhook: handleCardTransaction error - ${error.message}`);
   }
