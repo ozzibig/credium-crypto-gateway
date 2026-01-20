@@ -1,6 +1,7 @@
 const express = require('express');
 const axios = require('axios');
 const { generateResponse } = require('../services/chatbot');
+const { pool } = require('../database/connection');
 const logger = require('../utils/logger');
 require('dotenv').config();
 
@@ -8,6 +9,10 @@ const router = express.Router();
 
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const TELEGRAM_API_URL = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}`;
+
+// Lingue supportate
+const SUPPORTED_LANGUAGES = ['it', 'en', 'es', 'fr', 'de', 'pt'];
+const DEFAULT_LANGUAGE = 'it';
 
 /**
  * Endpoint webhook per ricevere messaggi da Telegram
@@ -24,19 +29,40 @@ router.post('/telegram', async (req, res) => {
 
     // Estrai informazioni dal messaggio
     const chatId = update.message.chat.id;
-    const userId = update.message.from.id;
+    const telegramUserId = update.message.from.id;
     const firstName = update.message.from.first_name || 'Utente';
     const username = update.message.from.username || null;
     const userMessage = update.message.text;
 
+    // Estrai language_code da Telegram (es: "it", "en", "es", "fr", "de", "pt")
+    let languageCode = update.message.from.language_code || DEFAULT_LANGUAGE;
+    // Prendi solo i primi 2 caratteri (es: "it-IT" -> "it")
+    languageCode = languageCode.substring(0, 2).toLowerCase();
+    // Usa la lingua solo se supportata, altrimenti default
+    if (!SUPPORTED_LANGUAGES.includes(languageCode)) {
+      languageCode = DEFAULT_LANGUAGE;
+    }
+
     // Log del messaggio ricevuto
-    logger.info(`=� Messaggio da ${firstName} (${userId}): ${userMessage}`);
+    logger.info(`📨 Messaggio da ${firstName} (${telegramUserId}) [${languageCode}]: ${userMessage}`);
+
+    // Aggiorna la lingua nel database (se l'utente esiste)
+    try {
+      await pool.query(
+        'UPDATE users SET language_code = $1, updated_at = NOW() WHERE telegram_id = $2',
+        [languageCode, telegramUserId]
+      );
+    } catch (dbError) {
+      // Ignora errore DB - il chatbot funziona anche senza database
+      logger.debug(`DB update skipped: ${dbError.message}`);
+    }
 
     // Costruisci il contesto utente per il chatbot
     const userContext = {
       firstName,
       username,
-      userId
+      userId: telegramUserId,
+      languageCode
     };
 
     // Mostra "typing..." mentre generiamo la risposta

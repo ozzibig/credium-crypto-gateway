@@ -4,6 +4,16 @@ require('dotenv').config();
 const CLAUDE_API_KEY = process.env.CLAUDE_API_KEY;
 const CLAUDE_API_URL = 'https://api.anthropic.com/v1/messages';
 
+// Mappa delle lingue supportate con nomi completi
+const LANGUAGE_NAMES = {
+  it: 'italiano',
+  en: 'inglese (English)',
+  es: 'spagnolo (español)',
+  fr: 'francese (français)',
+  de: 'tedesco (Deutsch)',
+  pt: 'portoghese (português)'
+};
+
 // Storage in memoria per la cronologia conversazioni (per utente)
 // Formato: { odologia: [{ role: 'user'|'assistant', content: string }] }
 const conversationHistory = new Map();
@@ -144,11 +154,26 @@ REGOLE ASSOLUTE:
 1. MAI spiegare tutto in un solo messaggio
 2. Risposte corte, max 2-3 righe
 3. Info aggiuntive solo se richieste
-4. Lingua: SEMPRE italiano
-5. Emoji: massimo 1-2 per messaggio, all'inizio della risposta
-6. Usa **grassetto** per parole chiave, mai su frasi intere
-7. IMPORTANTE: Quando l'utente risponde "sì", "ok", "dimmi", "vai", continua il discorso precedente
-8. MAI dire "scarica l'app" o "download". Telecard è una Mini App Telegram, si apre con "Open App"`;
+4. Emoji: massimo 1-2 per messaggio, all'inizio della risposta
+5. Usa **grassetto** per parole chiave, mai su frasi intere
+6. IMPORTANTE: Quando l'utente risponde "sì", "ok", "dimmi", "vai", continua il discorso precedente
+7. MAI dire "scarica l'app" o "download". Telecard è una Mini App Telegram, si apre con "Open App"`;
+
+/**
+ * Genera il SYSTEM_PROMPT completo con la lingua dell'utente
+ * @param {string} languageCode - Codice lingua (it, en, es, fr, de, pt)
+ * @returns {string} - SYSTEM_PROMPT completo
+ */
+function getSystemPrompt(languageCode = 'it') {
+  const langName = LANGUAGE_NAMES[languageCode] || LANGUAGE_NAMES['it'];
+
+  const languageInstruction = `
+
+LINGUA DELL'UTENTE: ${languageCode.toUpperCase()} (${langName})
+Rispondi SEMPRE in ${langName}. Questa è la lingua del dispositivo dell'utente, usa SOLO questa lingua per tutte le risposte.`;
+
+  return SYSTEM_PROMPT + languageInstruction;
+}
 
 /**
  * Ottiene la cronologia conversazione per un utente
@@ -196,7 +221,7 @@ function clearHistory(odologia) {
 /**
  * Genera una risposta intelligente usando Claude AI con cronologia
  * @param {string} userMessage - Il messaggio dell'utente
- * @param {object} userContext - Contesto utente (nome, username, odologia)
+ * @param {object} userContext - Contesto utente (nome, username, userId, languageCode)
  * @returns {Promise<string>} - La risposta generata da Claude
  */
 async function generateResponse(userMessage, userContext = {}) {
@@ -207,6 +232,7 @@ async function generateResponse(userMessage, userContext = {}) {
     }
 
     const odologia = userContext.odologia || userContext.userId || 'unknown';
+    const languageCode = userContext.languageCode || 'it';
 
     // Aggiungi il messaggio utente alla cronologia
     addToHistory(odologia, 'user', userMessage);
@@ -226,12 +252,15 @@ async function generateResponse(userMessage, userContext = {}) {
       return msg;
     });
 
+    // Genera il SYSTEM_PROMPT con la lingua dell'utente
+    const systemPrompt = getSystemPrompt(languageCode);
+
     const response = await axios.post(
       CLAUDE_API_URL,
       {
         model: 'claude-sonnet-4-20250514',
         max_tokens: 256,
-        system: SYSTEM_PROMPT,
+        system: systemPrompt,
         messages: messages
       },
       {

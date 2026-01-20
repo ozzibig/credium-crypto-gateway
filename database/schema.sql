@@ -8,11 +8,23 @@ CREATE TABLE IF NOT EXISTS users (
     full_name TEXT,
     telegram_id BIGINT UNIQUE,
     telegram_username VARCHAR(255),
+    language_code VARCHAR(10) DEFAULT 'it',
     referral_code VARCHAR(50) UNIQUE,
     referred_by TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Migration: Add language_code column if not exists
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'users' AND column_name = 'language_code'
+    ) THEN
+        ALTER TABLE users ADD COLUMN language_code VARCHAR(10) DEFAULT 'it';
+    END IF;
+END $$;
 
 -- User wallets
 CREATE TABLE IF NOT EXISTS user_wallets (
