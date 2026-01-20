@@ -97,13 +97,53 @@ CREATE TABLE IF NOT EXISTS karat_transactions (
     created_at TIMESTAMP DEFAULT NOW()
 );
 
--- Cards table
-CREATE TABLE IF NOT EXISTS cards (
+-- Telegram Whitelabel mapping (Turtle user → Telegram user)
+CREATE TABLE IF NOT EXISTS telegram_whitelabel (
+    id SERIAL PRIMARY KEY,
+    telegram_id BIGINT UNIQUE NOT NULL,
+    turtle_user_id TEXT UNIQUE NOT NULL,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Profiles table (KYC status tracking)
+CREATE TABLE IF NOT EXISTS profiles (
     id SERIAL PRIMARY KEY,
     user_id TEXT REFERENCES users(id) ON DELETE CASCADE,
+    turtle_user_id TEXT UNIQUE,
+    kyc_status VARCHAR(50) DEFAULT 'pending' CHECK (kyc_status IN ('pending', 'submitted', 'approved', 'rejected')),
+    kyc_rejection_reason TEXT,
+    kyc_submitted_at TIMESTAMP,
+    kyc_updated_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Cards table (with Turtle integration fields)
+CREATE TABLE IF NOT EXISTS cards (
+    id SERIAL PRIMARY KEY,
+    card_id TEXT UNIQUE,
+    user_id TEXT REFERENCES users(id) ON DELETE CASCADE,
+    turtle_user_id TEXT,
     card_type VARCHAR(50) NOT NULL,
+    last_four_digits VARCHAR(4),
     status VARCHAR(50) DEFAULT 'pending',
-    created_at TIMESTAMP DEFAULT NOW()
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Transactions table (card operations and topups)
+CREATE TABLE IF NOT EXISTS transactions (
+    id SERIAL PRIMARY KEY,
+    transaction_id TEXT UNIQUE NOT NULL,
+    card_id TEXT,
+    type VARCHAR(50) NOT NULL CHECK (type IN ('card_transaction', 'topup', 'withdrawal', 'refund')),
+    amount DECIMAL(18, 2) NOT NULL,
+    currency VARCHAR(10) DEFAULT 'EUR',
+    merchant_name TEXT,
+    status VARCHAR(50) DEFAULT 'pending',
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
 );
 
 -- Indexes
@@ -119,6 +159,17 @@ CREATE INDEX IF NOT EXISTS idx_referrals_referrer_id ON referrals(referrer_id);
 CREATE INDEX IF NOT EXISTS idx_referrals_referred_id ON referrals(referred_id);
 CREATE INDEX IF NOT EXISTS idx_karat_transactions_user_id ON karat_transactions(user_id);
 CREATE INDEX IF NOT EXISTS idx_cards_user_id ON cards(user_id);
+CREATE INDEX IF NOT EXISTS idx_cards_card_id ON cards(card_id);
+CREATE INDEX IF NOT EXISTS idx_cards_turtle_user_id ON cards(turtle_user_id);
+CREATE INDEX IF NOT EXISTS idx_telegram_whitelabel_telegram_id ON telegram_whitelabel(telegram_id);
+CREATE INDEX IF NOT EXISTS idx_telegram_whitelabel_turtle_user_id ON telegram_whitelabel(turtle_user_id);
+CREATE INDEX IF NOT EXISTS idx_profiles_user_id ON profiles(user_id);
+CREATE INDEX IF NOT EXISTS idx_profiles_turtle_user_id ON profiles(turtle_user_id);
+CREATE INDEX IF NOT EXISTS idx_profiles_kyc_status ON profiles(kyc_status);
+CREATE INDEX IF NOT EXISTS idx_transactions_transaction_id ON transactions(transaction_id);
+CREATE INDEX IF NOT EXISTS idx_transactions_card_id ON transactions(card_id);
+CREATE INDEX IF NOT EXISTS idx_transactions_type ON transactions(type);
+CREATE INDEX IF NOT EXISTS idx_transactions_status ON transactions(status);
 
 -- Add self-referencing foreign key constraint for users.referred_by (idempotent)
 DO $$
@@ -129,5 +180,51 @@ BEGIN
     ) THEN
         ALTER TABLE users ADD CONSTRAINT users_referred_by_fkey
             FOREIGN KEY (referred_by) REFERENCES users(id) ON DELETE SET NULL;
+    END IF;
+END $$;
+
+-- ============ MIGRATIONS FOR EXISTING TABLES ============
+
+-- Migration: Add card_id column to cards if not exists
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'cards' AND column_name = 'card_id'
+    ) THEN
+        ALTER TABLE cards ADD COLUMN card_id TEXT UNIQUE;
+    END IF;
+END $$;
+
+-- Migration: Add turtle_user_id column to cards if not exists
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'cards' AND column_name = 'turtle_user_id'
+    ) THEN
+        ALTER TABLE cards ADD COLUMN turtle_user_id TEXT;
+    END IF;
+END $$;
+
+-- Migration: Add last_four_digits column to cards if not exists
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'cards' AND column_name = 'last_four_digits'
+    ) THEN
+        ALTER TABLE cards ADD COLUMN last_four_digits VARCHAR(4);
+    END IF;
+END $$;
+
+-- Migration: Add updated_at column to cards if not exists
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'cards' AND column_name = 'updated_at'
+    ) THEN
+        ALTER TABLE cards ADD COLUMN updated_at TIMESTAMP DEFAULT NOW();
     END IF;
 END $$;
