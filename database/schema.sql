@@ -146,6 +146,67 @@ CREATE TABLE IF NOT EXISTS transactions (
     updated_at TIMESTAMP DEFAULT NOW()
 );
 
+-- ============ MIGRATIONS FOR EXISTING TABLES ============
+-- These MUST run BEFORE indexes to ensure columns exist
+
+-- Migration: Add card_id column to cards if not exists
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'cards' AND column_name = 'card_id'
+    ) THEN
+        ALTER TABLE cards ADD COLUMN card_id TEXT;
+    END IF;
+END $$;
+
+-- Migration: Add turtle_user_id column to cards if not exists
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'cards' AND column_name = 'turtle_user_id'
+    ) THEN
+        ALTER TABLE cards ADD COLUMN turtle_user_id TEXT;
+    END IF;
+END $$;
+
+-- Migration: Add last_four_digits column to cards if not exists
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'cards' AND column_name = 'last_four_digits'
+    ) THEN
+        ALTER TABLE cards ADD COLUMN last_four_digits VARCHAR(4);
+    END IF;
+END $$;
+
+-- Migration: Add updated_at column to cards if not exists
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'cards' AND column_name = 'updated_at'
+    ) THEN
+        ALTER TABLE cards ADD COLUMN updated_at TIMESTAMP DEFAULT NOW();
+    END IF;
+END $$;
+
+-- Add unique constraint to card_id if not exists
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conname = 'cards_card_id_key'
+    ) THEN
+        ALTER TABLE cards ADD CONSTRAINT cards_card_id_key UNIQUE (card_id);
+    END IF;
+EXCEPTION WHEN others THEN
+    -- Ignore if constraint already exists or column has duplicates
+    NULL;
+END $$;
+
 -- Indexes
 CREATE INDEX IF NOT EXISTS idx_user_wallets_user_id ON user_wallets(user_id);
 CREATE INDEX IF NOT EXISTS idx_deposits_user_id ON deposits(user_id);
@@ -180,51 +241,5 @@ BEGIN
     ) THEN
         ALTER TABLE users ADD CONSTRAINT users_referred_by_fkey
             FOREIGN KEY (referred_by) REFERENCES users(id) ON DELETE SET NULL;
-    END IF;
-END $$;
-
--- ============ MIGRATIONS FOR EXISTING TABLES ============
-
--- Migration: Add card_id column to cards if not exists
-DO $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1 FROM information_schema.columns
-        WHERE table_name = 'cards' AND column_name = 'card_id'
-    ) THEN
-        ALTER TABLE cards ADD COLUMN card_id TEXT UNIQUE;
-    END IF;
-END $$;
-
--- Migration: Add turtle_user_id column to cards if not exists
-DO $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1 FROM information_schema.columns
-        WHERE table_name = 'cards' AND column_name = 'turtle_user_id'
-    ) THEN
-        ALTER TABLE cards ADD COLUMN turtle_user_id TEXT;
-    END IF;
-END $$;
-
--- Migration: Add last_four_digits column to cards if not exists
-DO $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1 FROM information_schema.columns
-        WHERE table_name = 'cards' AND column_name = 'last_four_digits'
-    ) THEN
-        ALTER TABLE cards ADD COLUMN last_four_digits VARCHAR(4);
-    END IF;
-END $$;
-
--- Migration: Add updated_at column to cards if not exists
-DO $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1 FROM information_schema.columns
-        WHERE table_name = 'cards' AND column_name = 'updated_at'
-    ) THEN
-        ALTER TABLE cards ADD COLUMN updated_at TIMESTAMP DEFAULT NOW();
     END IF;
 END $$;
